@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Outils RescueGrid USB/PXE</title>
+  <style>
+    :root { --brand:#0f766e; --ink:#172033; --muted:#667085; --line:#e5e7eb; --bg:#f5f7fb; --card:#fff; --shadow:0 12px 32px rgba(23,32,51,.07); }
+    html[data-theme="dark"] { --brand:#14b8a6; --ink:#e5e7eb; --muted:#9ca3af; --line:#263244; --bg:#0b1220; --card:#111827; --shadow:0 14px 36px rgba(0,0,0,.35); }
+    body { margin:0; font-family:Segoe UI, Arial, sans-serif; background:var(--bg); color:var(--ink); }
+    .topbar { display:flex; justify-content:space-between; align-items:center; padding:14px clamp(16px,3vw,34px); background:var(--card); border-bottom:1px solid var(--line); position:sticky; top:0; }
+    a { color:var(--brand); font-weight:800; text-decoration:none; }
+    main { padding:24px clamp(16px,3vw,34px); display:grid; gap:18px; }
+    section { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:20px; box-shadow:var(--shadow); }
+    h1,h2 { margin:0 0 12px; }
+    .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    .card { border:1px solid var(--line); border-radius:16px; padding:18px; }
+    code, pre { background:#0f172a; color:#e5e7eb; border-radius:14px; }
+    code { padding:2px 6px; }
+    pre { padding:16px; overflow:auto; }
+    .button { display:inline-flex; background:var(--brand); color:#fff; padding:10px 14px; border-radius:12px; margin-top:10px; }
+    .muted { color:var(--muted); }
+    @media(max-width:900px){ .grid{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a href="/">← Dashboard</a>
+    <strong>Restor-PC RescueGrid · Outils USB/PXE</strong>
+    <a href="/logout">Déconnexion</a>
+  </header>
+  <main>
+    <section>
+      <h1>Centre outils technicien</h1>
+      <p class="muted">Cette page regroupe les commandes pour créer une clé USB RescueGrid, lancer le menu WinPE, préparer le PXE et déployer sur Synology.</p>
+    </section>
+    <div class="grid">
+      <section class="card">
+        <h2>1. Créer clé USB</h2>
+        <p>Prépare une clé technicien avec scripts RescueGrid, menu WinPE, dossiers de rapports et outils externes.</p>
+        <pre>powershell -ExecutionPolicy Bypass -File agent\windows\Create-RescueGridUSB.ps1 -TargetDrive E: -DashboardUrl "http://192.168.1.10:8000" -IncludeProject</pre>
+      </section>
+      <section class="card">
+        <h2>2. Menu WinPE</h2>
+        <p>Lance le menu atelier depuis la clé ou depuis WinPE.</p>
+        <pre>powershell -ExecutionPolicy Bypass -File agent\windows\Start-RescueGrid.ps1</pre>
+      </section>
+      <section class="card">
+        <h2>3. PXE Rescue Server</h2>
+        <p>Préparation du serveur de boot réseau si le module PXE est disponible.</p>
+        <pre>powershell -ExecutionPolicy Bypass -File pxe\Setup-PXERescueServer.ps1</pre>
+      </section>
+    </div>
+    <section>
+      <h2>Structure clé USB attendue</h2>
+      <pre>RESCUEGRID_USB/
+├── Start-RescueGrid.cmd
+├── RescueGrid/
+│   ├── agent/windows/
+│   ├── tools/smartctl/
+│   ├── tools/testdisk/
+│   ├── reports/
+│   └── config/rescuegrid.env
+└── README_USB.txt</pre>
+    </section>
+  </main>
+  <script>
+    document.documentElement.dataset.theme = localStorage.getItem('rescuegrid-theme') || 'light';
+  </script>
+</body>
+</html>

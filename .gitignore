@@ -1,0 +1,15 @@
+﻿.venv/
+__pycache__/
+*.pyc
+.env
+*.db
+*.sqlite
+storage/
+backend/storage/
+Intervention_*/
+*.zip
+*.7z
+tools/*.exe
+tools/*.msi
+tools/*.iso
+*.log

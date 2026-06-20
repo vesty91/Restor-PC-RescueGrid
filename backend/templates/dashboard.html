@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Restor-PC RescueGrid</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --brand:#0f766e; --brand2:#14b8a6; --danger:#dc2626; --warn:#d97706; --dark:#111827;
+      --ink:#172033; --muted:#667085; --line:#e5e7eb; --bg:#f5f7fb; --card:#ffffff;
+      --shadow:0 12px 32px rgba(23,32,51,.07);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --brand:#14b8a6; --brand2:#2dd4bf; --ink:#e5e7eb; --muted:#9ca3af; --line:#263244;
+      --bg:#0b1220; --card:#111827; --shadow:0 14px 36px rgba(0,0,0,.35);
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Segoe UI, Arial, sans-serif; background:var(--bg); color:var(--ink); }
+    a { color:var(--brand); font-weight:700; text-decoration:none; }
+    a:hover { text-decoration:underline; }
+    .topbar {
+      position:sticky; top:0; z-index:10; height:66px; display:grid; grid-template-columns:auto 1fr auto;
+      align-items:center; gap:18px; padding:10px clamp(16px,3vw,34px); background:rgba(255,255,255,.86);
+      backdrop-filter: blur(14px); border-bottom:1px solid var(--line);
+    }
+    html[data-theme="dark"] .topbar { background:rgba(17,24,39,.86); }
+    .brand { display:flex; align-items:center; gap:10px; min-width:220px; }
+    .brand img { height:38px; max-width:140px; object-fit:contain; }
+    .brand-mark { width:38px; height:38px; display:grid; place-items:center; border-radius:12px; background:linear-gradient(135deg,var(--brand),#134e4a); color:#fff; font-weight:900; }
+    .brand-title { line-height:1.08; }
+    .brand-title strong { display:block; font-size:16px; }
+    .brand-title span { color:var(--muted); font-size:12px; }
+    .searchbar { display:flex; gap:8px; align-items:center; max-width:780px; }
+    input, select, textarea, button {
+      width:100%; border:1px solid var(--line); border-radius:12px; padding:10px 12px; font:inherit;
+      background:var(--card); color:var(--ink);
+    }
+    select { padding:8px 10px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--ink); }
+    button, .button {
+      width:auto; border:0; background:var(--brand); color:white; font-weight:800; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:10px 13px; border-radius:12px;
+    }
+    .button.secondary, button.secondary { background:#334155; }
+    .button.ghost, button.ghost { background:transparent; color:var(--ink); border:1px solid var(--line); }
+    .button.danger, button.danger, .btn-sm { background:var(--danger); color:#fff; }
+    .btn-sm { border:0; font-size:11px; font-weight:800; padding:5px 8px; border-radius:8px; cursor:pointer; }
+    .actions { display:flex; gap:8px; align-items:center; }
+    .layout { padding:20px clamp(16px,3vw,34px) 42px; display:grid; gap:18px; }
+    .hero {
+      display:grid; grid-template-columns:1.2fr .8fr; gap:18px; align-items:stretch;
+    }
+    .panel, section, form {
+      background:var(--card); border:1px solid var(--line); border-radius:18px; padding:18px; box-shadow:var(--shadow);
+    }
+    .hero-main { background:linear-gradient(135deg,#0f766e,#134e4a); color:#fff; border:0; overflow:hidden; position:relative; }
+    .hero-main:after { content:""; position:absolute; width:260px; height:260px; right:-70px; top:-90px; border-radius:50%; background:rgba(255,255,255,.12); }
+    .hero-main h1 { margin:0 0 8px; font-size:clamp(28px,4vw,46px); }
+    .hero-main p { margin:0; opacity:.88; max-width:760px; }
+    .import-card { display:grid; gap:12px; align-content:center; }
+    .import-card .button { width:100%; min-height:48px; font-size:16px; }
+    .kpis { display:grid; grid-template-columns:repeat(6, minmax(130px, 1fr)); gap:14px; }
+    .kpi { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:16px; box-shadow:var(--shadow); }
+    .kpi span { display:block; color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.4px; font-weight:800; }
+    .kpi strong { display:block; font-size:28px; margin-top:6px; }
+    .kpi.danger { border-color:rgba(220,38,38,.35); }
+    .kpi.warning { border-color:rgba(217,119,6,.35); }
+    .grid { display:grid; grid-template-columns:360px 1fr; gap:18px; align-items:start; }
+    .stack { display:grid; gap:16px; }
+    h2, h3 { margin:0 0 12px; }
+    label { display:block; margin:11px 0 5px; font-weight:700; font-size:13px; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding:11px 10px; border-bottom:1px solid var(--line); vertical-align:top; font-size:14px; }
+    th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.35px; }
+    .tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+    .tab { padding:9px 14px; border-radius:999px; background:rgba(15,118,110,.08); cursor:pointer; font-weight:800; color:var(--brand); }
+    .tab.active { background:var(--brand); color:#fff; }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+    .muted { color:var(--muted); }
+    .pill, .risk { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:5px 9px; font-size:12px; font-weight:900; white-space:nowrap; }
+    .pill { background:#ecfdf5; color:#047857; }
+    .risk-ok { background:#ecfdf5; color:#047857; }
+    .risk-warning { background:#fff7ed; color:#c2410c; }
+    .risk-high { background:#fef2f2; color:#b91c1c; }
+    .risk-critical { background:#111827; color:#fff; }
+    .risk-none { background:#f3f4f6; color:#6b7280; }
+    html[data-theme="dark"] .risk-none { background:#1f2937; color:#9ca3af; }
+    .alerts { display:grid; gap:10px; }
+    .alert { border:1px solid var(--line); border-left:5px solid var(--brand); border-radius:14px; padding:12px; background:var(--card); }
+    .alert.critical { border-left-color:#111827; }
+    .alert.warning { border-left-color:var(--warn); }
+    .alert.ticket { border-left-color:#2563eb; }
+    .empty { border:1px dashed var(--line); border-radius:16px; padding:26px; text-align:center; color:var(--muted); }
+    .quick { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .quick .button { width:100%; }
+    @media (max-width:1100px) { .kpis { grid-template-columns:repeat(3,1fr); } .hero { grid-template-columns:1fr; } .grid { grid-template-columns:1fr; } }
+    @media (max-width:760px) {
+      .topbar { grid-template-columns:1fr; height:auto; position:relative; }
+      .brand { min-width:0; }
+      .actions, .searchbar { width:100%; }
+      .kpis { grid-template-columns:repeat(2,1fr); }
+      .quick { grid-template-columns:1fr; }
+      th:nth-child(4), td:nth-child(4), th:nth-child(5), td:nth-child(5) { display:none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      {% if logo_path %}
+        <img src="/storage/{{ logo_path }}" alt="Logo">
+      {% else %}
+        <div class="brand-mark">RG</div>
+      {% endif %}
+      <div class="brand-title"><strong>Restor-PC RescueGrid</strong><span>Atelier v6.0</span></div>
+    </a>
+    <form class="searchbar" action="/search" method="get">
+      <input name="q" placeholder="Recherche globale : client, machine, BIOS, ticket, facture..." value="{{ search_query or '' }}">
+      <button type="submit">Rechercher</button>
+    </form>
+    <div class="actions">
+      <a class="button" href="#import">📦 Import ZIP</a>
+      <a class="button ghost" href="/tools">USB/PXE</a>
+      <button class="ghost" onclick="toggleDarkMode()" type="button">🌓</button>
+      <a class="button secondary" href="/logout">{{ user.username if user else "Admin" }}</a>
+    </div>
+  </header>
+
+  <main class="layout">
+    <div class="hero">
+      <section class="hero-main">
+        <h1>Centre de contrôle atelier</h1>
+        <p>Diagnostic, sauvegarde, BlackBox, historique machines, facturation, tickets, WinPE, PXE et clé USB technicien.</p>
+      </section>
+      <section class="import-card" id="import">
+        <h2>Workflow principal</h2>
+        <p class="muted">Importe l'archive ZIP générée par l'agent RescueGrid après intervention.</p>
+        <form action="/upload" method="post" enctype="multipart/form-data">
+          <label>Client</label>
+          <input name="client_name" placeholder="Client_Dupont" required>
+          <label>Archive RescueGrid</label>
+          <input type="file" name="file" accept=".zip" required>
+          <button>📦 Importer une archive RescueGrid</button>
+        </form>
+      </section>
+    </div>
+
+    <section class="kpis" aria-label="Indicateurs atelier">
+      <div class="kpi"><span>Clients</span><strong>{{ stats.clients }}</strong></div>
+      <div class="kpi"><span>Machines</span><strong>{{ stats.machines }}</strong></div>
+      <div class="kpi"><span>Interventions</span><strong>{{ stats.interventions }}</strong></div>
+      <div class="kpi danger"><span>Disques critiques</span><strong>{{ stats.disk_critical }}</strong></div>
+      <div class="kpi warning"><span>Tickets ouverts</span><strong>{{ stats.tickets_open }}</strong></div>
+      <div class="kpi"><span>CA du mois</span><strong>{{ "%.0f"|format(stats.monthly_revenue) }} €</strong></div>
+    </section>
+
+    <div class="grid">
+      <aside class="stack">
+        <section>
+          <h2>Actions rapides</h2>
+          <div class="quick">
+            <a class="button" href="#import">ZIP</a>
+            <a class="button secondary" href="/tools">USB</a>
+            <a class="button ghost" href="/export/interventions.xlsx">Excel</a>
+            <a class="button ghost" href="/backup/database">Backup BDD</a>
+          </div>
+        </section>
+
+        <section>
+          <h2>Alertes</h2>
+          <div class="alerts">
+            {% if alerts %}
+              {% for alert in alerts %}
+                <div class="alert {{ alert.level }}">
+                  <strong>{{ alert.title }}</strong>
+                  <div class="muted">{{ alert.message }}</div>
+                  {% if alert.url %}<a href="/storage/{{ alert.url }}" target="_blank">Voir rapport</a>{% endif %}
+                </div>
+              {% endfor %}
+            {% else %}
+              <div class="empty">Aucune alerte critique pour le moment.</div>
+            {% endif %}
+          </div>
+        </section>
+
+        <section>
+          <h2>Machines à risque</h2>
+          {% if risk_machines %}
+            {% for m in risk_machines %}
+              <div class="alert warning">
+                <strong>{{ m.machine_name or m.bios_serial or 'Machine' }}</strong>
+                <div class="muted">{{ m.manufacturer or '' }} {{ m.model or '' }}</div>
+                <a href="/machine/{{ m.id }}">Historique</a>
+              </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty">Aucune machine à risque détectée.</div>
+          {% endif %}
+        </section>
+
+        <form action="/clients" method="post">
+          <h2>Nouveau client</h2>
+          <label>Nom</label><input name="name" required>
+          <label>Email</label><input name="email" type="email">
+          <label>Téléphone</label><input name="phone">
+          <button>Ajouter client</button>
+        </form>
+
+        <form action="/upload-logo" method="post" enctype="multipart/form-data">
+          <h2>Logo atelier</h2>
+          <input type="file" name="file" accept="image/*" required>
+          <button class="secondary">Mettre à jour</button>
+        </form>
+      </aside>
+
+      <section>
+        <div class="tabs">
+          <div class="tab active" onclick="showTab('interventions')">Interventions ({{ interventions|length }})</div>
+          <div class="tab" onclick="showTab('clients')">Clients ({{ clients|length }})</div>
+          <div class="tab" onclick="showTab('machines')">Machines ({{ machines|length }})</div>
+          <div class="tab" onclick="showTab('tickets')">Tickets ({{ tickets|length }})</div>
+          <div class="tab" onclick="showTab('factures')">Factures ({{ invoices|length }})</div>
+          <div class="tab" onclick="showTab('pieces')">Pièces ({{ parts|length }})</div>
+        </div>
+
+        <div id="interventions" class="tab-content active">
+          <h2>Dernières interventions</h2>
+          {% if interventions %}
+          <table>
+            <thead><tr><th>Date</th><th>Client</th><th>Machine</th><th>Score</th><th>Risque</th><th>Statut</th><th>Rapport</th><th></th></tr></thead>
+            <tbody>
+              {% for item in interventions %}
+                {% set badge = risk_badge(item.disk_risk or item.data_loss_risk) %}
+                <tr>
+                  <td>{{ item.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                  <td>{% if item.client %}<a href="/client/{{ item.client.id }}">{{ item.client.name }}</a>{% else %}<span class="muted">-</span>{% endif %}</td>
+                  <td>{% if item.machine %}<a href="/machine/{{ item.machine.id }}">{{ item.machine.machine_name or item.bios_serial or 'Machine' }}</a>{% else %}{{ item.machine_name or '-' }}{% endif %}</td>
+                  <td>{{ item.health_score if item.health_score is not none else '-' }}/100</td>
+                  <td><span class="risk {{ badge.class }}">{{ badge.emoji }} {{ badge.label }}</span></td>
+                  <td>
+                    <form action="/intervention/{{ item.id }}/status" method="post">
+                      <select name="status" onchange="this.form.submit()">
+                        {% for st in atelier_statuses %}
+                          <option value="{{ st }}" {% if item.status == st %}selected{% endif %}>{{ st }}</option>
+                        {% endfor %}
+                      </select>
+                    </form>
+                  </td>
+                  <td>
+                    {% if item.report_path %}<a href="/storage/{{ item.report_path }}" target="_blank">Rapport</a>{% else %}<span class="muted">-</span>{% endif %}
+                    · <a href="/intervention/{{ item.id }}/label" target="_blank">Étiquette</a>
+                  </td>
+                  <td><form action="/delete/intervention/{{ item.id }}" method="post" onsubmit="return confirm('Supprimer cette intervention ?')"><button class="btn-sm">Suppr.</button></form></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}
+            <div class="empty"><strong>Aucune intervention enregistrée.</strong><br>Commence par importer une archive ZIP RescueGrid.</div>
+          {% endif %}
+        </div>
+
+        <div id="clients" class="tab-content">
+          <h2>Clients</h2>
+          {% if clients %}
+          <table><thead><tr><th>Nom</th><th>Email</th><th>Téléphone</th><th>Créé</th><th></th></tr></thead><tbody>
+            {% for c in clients %}
+              <tr><td><a href="/client/{{ c.id }}">{{ c.name }}</a></td><td>{{ c.email or '-' }}</td><td>{{ c.phone or '-' }}</td><td>{{ c.created_at.strftime('%d/%m/%Y') }}</td><td><form action="/delete/client/{{ c.id }}" method="post" onsubmit="return confirm('Supprimer ce client ?')"><button class="btn-sm">Suppr.</button></form></td></tr>
+            {% endfor %}
+          </tbody></table>
+          {% else %}<div class="empty">Aucun client.</div>{% endif %}
+        </div>
+
+        <div id="machines" class="tab-content">
+          <h2>Machines</h2>
+          {% if machines %}
+          <table><thead><tr><th>Nom</th><th>Fabricant</th><th>Modèle</th><th>BIOS Serial</th><th>Dernière intervention</th></tr></thead><tbody>
+            {% for m in machines %}
+              <tr><td><a href="/machine/{{ m.id }}">{{ m.machine_name or 'Machine' }}</a></td><td>{{ m.manufacturer or '-' }}</td><td>{{ m.model or '-' }}</td><td>{{ m.bios_serial or '-' }}</td><td>{{ m.last_intervention.strftime('%d/%m/%Y %H:%M') if m.last_intervention else '-' }}</td></tr>
+            {% endfor %}
+          </tbody></table>
+          {% else %}<div class="empty">Aucune machine historisée.</div>{% endif %}
+        </div>
+
+        <div id="tickets" class="tab-content">
+          <h2>Tickets</h2>
+          {% if tickets %}
+          <table><thead><tr><th>Date</th><th>Titre</th><th>Priorité</th><th>Statut</th></tr></thead><tbody>
+            {% for t in tickets %}
+              <tr><td>{{ t.created_at.strftime('%d/%m/%Y') }}</td><td>{{ t.title }}</td><td>{{ t.priority }}</td><td><span class="pill">{{ t.status }}</span></td></tr>
+            {% endfor %}
+          </tbody></table>
+          {% else %}<div class="empty">Aucun ticket.</div>{% endif %}
+        </div>
+
+        <div id="factures" class="tab-content">
+          <h2>Factures</h2>
+          {% if invoices %}
+          <table><thead><tr><th>N°</th><th>Client</th><th>Total</th><th>Statut</th><th>Date</th><th>PDF</th></tr></thead><tbody>
+            {% for inv in invoices %}
+              <tr><td>{{ inv.invoice_number }}</td><td>{{ inv.client.name if inv.client else '-' }}</td><td>{{ "%.2f"|format(inv.total) }} €</td><td><span class="pill">{{ inv.status }}</span></td><td>{{ inv.created_at.strftime('%d/%m/%Y') }}</td><td><a href="/invoice/{{ inv.id }}/pdf" target="_blank">PDF</a></td></tr>
+            {% endfor %}
+          </tbody></table>
+          {% else %}<div class="empty">Aucune facture.</div>{% endif %}
+        </div>
+
+        <div id="pieces" class="tab-content">
+          <h2>Inventaire pièces</h2>
+          {% if parts %}
+          <table><thead><tr><th>Type</th><th>Marque</th><th>Modèle</th><th>Serial</th><th>Qté</th></tr></thead><tbody>
+            {% for p in parts %}
+              <tr><td>{{ p.part_type }}</td><td>{{ p.brand or '-' }}</td><td>{{ p.model or '-' }}</td><td>{{ p.serial_number or '-' }}</td><td>{{ p.quantity }}</td></tr>
+            {% endfor %}
+          </tbody></table>
+          {% else %}<div class="empty">Aucune pièce en stock.</div>{% endif %}
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    function showTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabName).classList.add('active');
+      event.target.classList.add('active');
+    }
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      const next = html.dataset.theme === 'dark' ? 'light' : 'dark';
+      html.dataset.theme = next;
+      localStorage.setItem('rescuegrid-theme', next);
+    }
+    document.documentElement.dataset.theme = localStorage.getItem('rescuegrid-theme') || 'light';
+  </script>
+</body>
+</html>
