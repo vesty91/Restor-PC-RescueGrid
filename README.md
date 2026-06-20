@@ -80,6 +80,19 @@ restor_pc_rescuegrid/
 3. Utiliser PostgreSQL via `DATABASE_URL`
 4. Ne pas exposer le dashboard sans HTTPS (Nginx + SSL)
 
+## Tests
+
+```batch
+run_tests.bat
+```
+
+Ou manuellement :
+
+```batch
+cd backend
+.venv\Scripts\python.exe tests\run_tests.py
+```
+
 ## Statut v9.2
 
 | Module | État |
