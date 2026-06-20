@@ -1,5 +1,33 @@
 
 
+## v10.0.0 — Business Edition
+
+### Devis
+- Modèle `Quote`, page `/quotes`, numérotation DEV-YYYYMMDD-####
+- PDF (wkhtmltopdf si installé, sinon HTML imprimable)
+- Conversion devis → facture en un clic
+
+### Factures
+- Paiements : statut payé, date, mode de paiement
+- PDF amélioré
+
+### Intervention détaillée (`/intervention/{id}`)
+- Téléchargements Rapport / ZIP / Manifest
+- Photos avant/pendant/après
+- Signature client (canvas souris/tactile)
+- Main d'œuvre (minutes + tarif)
+- Pièces utilisées (déstockage auto)
+- Analyse assistée heuristique (SMART, Windows, score)
+
+### Atelier pro
+- Multi-utilisateurs (`/users`) + journal (`/activity`)
+- Paramètres : changement mot de passe (`/settings`)
+- Filtres dashboard (statut, tri score/date)
+- Export CSV interventions
+- Auth bcrypt directe (fix warning passlib)
+
+---
+
 ## v6.0.0 — Atelier/Synology + USB Builder
 
 ### Dashboard UX

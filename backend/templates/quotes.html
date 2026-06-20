@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Devis - Restor-PC RescueGrid</title>
+  <style>
+    :root { --brand: #0f766e; --ink: #172033; --muted: #667085; --line: #e5e7eb; --bg: #f5f7fb; }
+    body { margin: 0; font-family: Segoe UI, Arial, sans-serif; background: var(--bg); color: var(--ink); }
+    header { background: linear-gradient(135deg, #0f766e, #134e4a); color: white; padding: 34px clamp(18px, 4vw, 48px); }
+    h1 { margin: 0; font-size: clamp(30px, 5vw, 54px); }
+    main { padding: 24px clamp(18px, 4vw, 48px); display: grid; gap: 20px; }
+    section { background: white; border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
+    label { display: block; margin-top: 12px; font-weight: 650; }
+    input, select, button, textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; font: inherit; }
+    button { margin-top: 14px; border: 0; background: var(--brand); color: white; font-weight: 800; cursor: pointer; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px; border-bottom: 1px solid var(--line); font-size: 14px; }
+    a { color: var(--brand); font-weight: 700; text-decoration: none; }
+    .btn-sm { border: 0; background: #dc2626; color: white; font-size: 11px; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+    .pill { display: inline-block; border-radius: 999px; padding: 4px 9px; background: #ecfdf5; color: #047857; font-size: 12px; font-weight: 800; }
+    .actions-inline { display: flex; gap: 8px; flex-wrap: wrap; }
+    .actions-inline form, .actions-inline a { width: auto; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" style="color:#fff;opacity:.85;">← Dashboard</a>
+    <h1>Devis</h1>
+    <p>Création, PDF et conversion en facture</p>
+  </header>
+  <main>
+    <section>
+      <h2>Nouveau devis</h2>
+      <form action="/quotes" method="post">
+        <label>Intervention</label>
+        <select name="intervention_id" required>
+          {% for i in interventions %}
+          <option value="{{ i.id }}">#{{ i.id }} — {{ i.title }} ({{ i.client.name if i.client else '?' }})</option>
+          {% endfor %}
+        </select>
+        <label>Description</label>
+        <textarea name="description" rows="2" placeholder="Diagnostic, réparation, pièces..."></textarea>
+        <label>Montant HT (€)</label>
+        <input name="amount" type="number" step="0.01" required>
+        <label>TVA (€)</label>
+        <input name="tax" type="number" step="0.01" value="0">
+        <label>Validité jusqu'au</label>
+        <input name="valid_until" type="date">
+        <label>Statut</label>
+        <select name="status">
+          <option value="draft">Brouillon</option>
+          <option value="sent">Envoyé</option>
+          <option value="accepted">Accepté</option>
+        </select>
+        <button>Créer le devis</button>
+      </form>
+    </section>
+    <section>
+      <h2>Devis existants ({{ quotes|length }})</h2>
+      <table>
+        <thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Total TTC</th><th>Statut</th><th>Actions</th></tr></thead>
+        <tbody>
+          {% for q in quotes %}
+          <tr>
+            <td><strong>{{ q.quote_number }}</strong></td>
+            <td>{{ q.created_at.strftime('%d/%m/%Y') }}</td>
+            <td>{{ q.client.name if q.client else '?' }}</td>
+            <td>{{ "%.2f"|format(q.total) }} €</td>
+            <td><span class="pill">{{ q.status }}</span></td>
+            <td class="actions-inline">
+              <a href="/quote/{{ q.id }}/pdf" target="_blank">PDF</a>
+              <form action="/quote/{{ q.id }}/convert" method="post"><button type="submit">→ Facture</button></form>
+              <form action="/delete/quote/{{ q.id }}" method="post" onsubmit="return confirm('Supprimer ?')"><button class="btn-sm" type="submit">X</button></form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

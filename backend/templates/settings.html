@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Paramètres - Restor-PC RescueGrid</title>
+  <style>
+    body { font-family: Segoe UI, Arial, sans-serif; background: #f5f7fb; margin: 0; padding: 40px; }
+    .card { max-width: 480px; margin: auto; background: white; border-radius: 18px; padding: 24px; border: 1px solid #e5e7eb; }
+    h1 { color: #0f766e; margin-top: 0; }
+    label { display: block; margin-top: 12px; font-weight: 650; }
+    input, button { width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #e5e7eb; box-sizing: border-box; }
+    button { margin-top: 16px; background: #0f766e; color: white; border: 0; font-weight: 800; cursor: pointer; }
+    .ok { background: #ecfdf5; color: #047857; padding: 10px; border-radius: 10px; margin-bottom: 12px; }
+    .err { background: #fee2e2; color: #991b1b; padding: 10px; border-radius: 10px; margin-bottom: 12px; }
+    a { color: #0f766e; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <a href="/">← Dashboard</a>
+    <h1>Paramètres</h1>
+    <p>Compte : <strong>{{ user.username }}</strong> ({{ user.role }})</p>
+    {% if message %}<div class="ok">{{ message }}</div>{% endif %}
+    {% if error %}<div class="err">{{ error }}</div>{% endif %}
+    <form action="/settings/password" method="post">
+      <label>Mot de passe actuel</label>
+      <input type="password" name="current_password" required>
+      <label>Nouveau mot de passe</label>
+      <input type="password" name="new_password" required minlength="8">
+      <label>Confirmer</label>
+      <input type="password" name="confirm_password" required minlength="8">
+      <button>Changer le mot de passe</button>
+    </form>
+    <p style="margin-top:20px;font-size:13px;color:#667085;">Production : définir SECRET_KEY, ADMIN_PASSWORD et UPLOAD_API_KEY dans .env</p>
+  </div>
+</body>
+</html>

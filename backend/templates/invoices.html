@@ -68,18 +68,22 @@
       <section>
         <h2>Factures existantes ({{ invoices|length }})</h2>
         <table>
-          <thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Montant HT</th><th>TVA</th><th>Total TTC</th><th>Statut</th><th></th></tr></thead>
+            <thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Total TTC</th><th>Statut</th><th>Actions</th></tr></thead>
           <tbody>
             {% for inv in invoices %}
             <tr>
               <td><strong>{{ inv.invoice_number }}</strong></td>
               <td>{{ inv.created_at.strftime('%Y-%m-%d') }}</td>
               <td>{{ inv.client.name if inv.client else '?' }}</td>
-              <td>{{ "%.2f"|format(inv.amount) }} €</td>
-              <td>{{ "%.2f"|format(inv.tax) }} €</td>
               <td><strong>{{ "%.2f"|format(inv.total) }} €</strong></td>
-              <td><span class="pill {{ inv.status }}">{{ inv.status }}</span></td>
-              <td><form action="/delete/invoice/{{ inv.id }}" method="post" style="display:inline"><button class="btn-sm">X</button></form></td>
+              <td><span class="pill {{ inv.status }}">{{ inv.status }}</span>{% if inv.payment_method %} · {{ inv.payment_method }}{% endif %}</td>
+              <td style="display:flex;gap:6px;flex-wrap:wrap;">
+                <a href="/invoice/{{ inv.id }}/pdf" target="_blank">PDF</a>
+                {% if inv.status != 'paid' %}
+                <form action="/invoice/{{ inv.id }}/pay" method="post"><input type="hidden" name="payment_method" value="cash"><button type="submit" style="width:auto;margin:0;padding:4px 8px;font-size:12px;">Payé</button></form>
+                {% endif %}
+                <form action="/delete/invoice/{{ inv.id }}" method="post" onsubmit="return confirm('Supprimer ?')"><button class="btn-sm" type="submit">X</button></form>
+              </td>
             </tr>
             {% endfor %}
           </tbody>

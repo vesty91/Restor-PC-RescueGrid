@@ -114,7 +114,7 @@
       {% else %}
         <div class="brand-mark">RG</div>
       {% endif %}
-      <div class="brand-title"><strong>Restor-PC RescueGrid</strong><span>Atelier v9.2</span></div>
+      <div class="brand-title"><strong>Restor-PC RescueGrid</strong><span>Business v10</span></div>
     </a>
     <form class="searchbar" action="/search" method="get">
       <input name="q" placeholder="Recherche globale : client, machine, BIOS, ticket, facture..." value="{{ search_query or '' }}">
@@ -122,7 +122,9 @@
     </form>
     <div class="actions">
       <a class="button" href="#import">📦 Import ZIP</a>
-      <a class="button ghost" href="/tools">USB/PXE</a>
+      <a class="button ghost" href="/quotes">Devis</a>
+      <a class="button ghost" href="/invoices">Factures</a>
+      <a class="button ghost" href="/settings">⚙</a>
       <button class="ghost" onclick="toggleDarkMode()" type="button">🌓</button>
       <a class="button secondary" href="/logout">{{ user.username if user else "Admin" }}</a>
     </div>
@@ -162,9 +164,11 @@
           <h2>Actions rapides</h2>
           <div class="quick">
             <a class="button" href="#import">ZIP</a>
-            <a class="button secondary" href="/tools">USB</a>
+            <a class="button secondary" href="/tools">USB/PXE</a>
             <a class="button ghost" href="/export/interventions.xlsx">Excel</a>
+            <a class="button ghost" href="/export/interventions.csv">CSV</a>
             <a class="button ghost" href="/backup/database">Backup BDD</a>
+            {% if user.role == 'admin' %}<a class="button ghost" href="/users">Users</a><a class="button ghost" href="/activity">Journal</a>{% endif %}
           </div>
         </section>
 
@@ -176,7 +180,7 @@
                 <div class="alert {{ alert.level }}">
                   <strong>{{ alert.title }}</strong>
                   <div class="muted">{{ alert.message }}</div>
-                  {% if alert.url %}<a href="/storage/{{ alert.url }}" target="_blank">Voir rapport</a>{% endif %}
+                  {% if alert.url %}<a href="{{ alert.url }}">Voir dossier</a>{% endif %}
                 </div>
               {% endfor %}
             {% else %}
@@ -222,8 +226,23 @@
           <div class="tab" onclick="showTab('machines')">Machines ({{ machines|length }})</div>
           <div class="tab" onclick="showTab('tickets')">Tickets ({{ tickets|length }})</div>
           <div class="tab" onclick="showTab('factures')">Factures ({{ invoices|length }})</div>
+          <div class="tab" onclick="showTab('devis')">Devis ({{ quotes|length }})</div>
           <div class="tab" onclick="showTab('pieces')">Pièces ({{ parts|length }})</div>
         </div>
+
+        <form method="get" action="/" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+          <select name="status" onchange="this.form.submit()" style="width:auto;">
+            <option value="">Tous statuts</option>
+            {% for st in atelier_statuses %}
+            <option value="{{ st }}" {% if filter_status == st %}selected{% endif %}>{{ st }}</option>
+            {% endfor %}
+          </select>
+          <select name="sort" onchange="this.form.submit()" style="width:auto;">
+            <option value="">Tri : récent</option>
+            <option value="date_asc" {% if filter_sort == 'date_asc' %}selected{% endif %}>Plus ancien</option>
+            <option value="score" {% if filter_sort == 'score' %}selected{% endif %}>Score santé</option>
+          </select>
+        </form>
 
         <div id="interventions" class="tab-content active">
           <h2>Dernières interventions</h2>
@@ -249,10 +268,9 @@
                     </form>
                   </td>
                   <td>
-                    {% if item.report_path %}<a href="/intervention/{{ item.id }}/download/report" target="_blank">Rapport</a>{% else %}<span class="muted">-</span>{% endif %}
+                    <a href="/intervention/{{ item.id }}">Dossier</a>
+                    {% if item.report_path %} · <a href="/intervention/{{ item.id }}/download/report" target="_blank">Rapport</a>{% endif %}
                     {% if item.archive_path %} · <a href="/intervention/{{ item.id }}/download/zip">ZIP</a>{% endif %}
-                    {% if item.report_path %} · <a href="/intervention/{{ item.id }}/download/manifest">Manifest</a>{% endif %}
-                    · <a href="/intervention/{{ item.id }}/label" target="_blank">Étiquette</a>
                   </td>
                   <td><form action="/delete/intervention/{{ item.id }}" method="post" onsubmit="return confirm('Supprimer cette intervention ?')"><button class="btn-sm">Suppr.</button></form></td>
                 </tr>
@@ -306,6 +324,18 @@
             {% endfor %}
           </tbody></table>
           {% else %}<div class="empty">Aucune facture.</div>{% endif %}
+        </div>
+
+        <div id="devis" class="tab-content">
+          <h2>Devis</h2>
+          <p><a href="/quotes">Gérer les devis →</a></p>
+          {% if quotes %}
+          <table><thead><tr><th>N°</th><th>Client</th><th>Total</th><th>Statut</th><th>PDF</th></tr></thead><tbody>
+            {% for q in quotes %}
+            <tr><td>{{ q.quote_number }}</td><td>{{ q.client.name if q.client else '-' }}</td><td>{{ "%.2f"|format(q.total) }} €</td><td><span class="pill">{{ q.status }}</span></td><td><a href="/quote/{{ q.id }}/pdf" target="_blank">PDF</a></td></tr>
+            {% endfor %}
+          </tbody></table>
+          {% else %}<div class="empty">Aucun devis. <a href="/quotes">Créer un devis</a></div>{% endif %}
         </div>
 
         <div id="pieces" class="tab-content">

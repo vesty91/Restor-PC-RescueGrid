@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
@@ -15,9 +15,9 @@ class Client(Base):
     phone: Mapped[str | None] = mapped_column(String(80), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    # Relations v6.0
     interventions: Mapped[list["Intervention"]] = relationship(back_populates="client")
     invoices: Mapped[list["Invoice"]] = relationship(back_populates="client")
+    quotes: Mapped[list["Quote"]] = relationship(back_populates="client")
     tickets: Mapped[list["Ticket"]] = relationship(back_populates="client")
 
 
@@ -32,7 +32,6 @@ class Machine(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_intervention: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    # Relations v6.0
     interventions: Mapped[list["Intervention"]] = relationship(back_populates="machine")
 
 
@@ -44,7 +43,7 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     full_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    role: Mapped[str] = mapped_column(String(80), default="technicien")  # admin | technicien
+    role: Mapped[str] = mapped_column(String(80), default="technicien")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -54,7 +53,7 @@ class Part(Base):
     __tablename__ = "part"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    part_type: Mapped[str] = mapped_column(String(80))  # ssd, hdd, ram, cpu, gpu
+    part_type: Mapped[str] = mapped_column(String(80))
     brand: Mapped[str | None] = mapped_column(String(255), nullable=True)
     model: Mapped[str | None] = mapped_column(String(255), nullable=True)
     serial_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -81,13 +80,37 @@ class Intervention(Base):
     status: Mapped[str] = mapped_column(String(80), default="nouvelle")
     archive_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     report_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    labor_minutes: Mapped[int] = mapped_column(Integer, default=0)
+    labor_rate: Mapped[float] = mapped_column(Float, default=0.0)
+    signature_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)
+    ai_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    # Relations v6.0
     client: Mapped["Client | None"] = relationship(back_populates="interventions")
     machine: Mapped["Machine | None"] = relationship(back_populates="interventions")
     invoice: Mapped["Invoice | None"] = relationship(back_populates="intervention", uselist=False)
     tickets: Mapped[list["Ticket"]] = relationship(back_populates="intervention")
+    photos: Mapped[list["InterventionPhoto"]] = relationship(back_populates="intervention", cascade="all, delete-orphan")
+    used_parts: Mapped[list["InterventionPart"]] = relationship(back_populates="intervention", cascade="all, delete-orphan")
+
+
+class Quote(Base):
+    __tablename__ = "quote"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    intervention_id: Mapped[int | None] = mapped_column(ForeignKey("intervention.id"), nullable=True)
+    client_id: Mapped[int | None] = mapped_column(ForeignKey("client.id"), nullable=True)
+    quote_number: Mapped[str] = mapped_column(String(50), unique=True, index=True)
+    description: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    amount: Mapped[float] = mapped_column(Float)
+    tax: Mapped[float] = mapped_column(Float, default=0.0)
+    total: Mapped[float] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(String(50), default="draft")
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    intervention: Mapped["Intervention | None"] = relationship()
+    client: Mapped["Client | None"] = relationship(back_populates="quotes")
 
 
 class Invoice(Base):
@@ -96,13 +119,15 @@ class Invoice(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     intervention_id: Mapped[int | None] = mapped_column(ForeignKey("intervention.id"), nullable=True)
     client_id: Mapped[int | None] = mapped_column(ForeignKey("client.id"), nullable=True)
+    quote_id: Mapped[int | None] = mapped_column(ForeignKey("quote.id"), nullable=True)
     invoice_number: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     amount: Mapped[float] = mapped_column(Float)
     tax: Mapped[float] = mapped_column(Float, default=0.0)
     total: Mapped[float] = mapped_column(Float)
-    status: Mapped[str] = mapped_column(String(50), default="draft")  # draft, sent, paid, cancelled
+    status: Mapped[str] = mapped_column(String(50), default="draft")
     due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    payment_method: Mapped[str | None] = mapped_column(String(80), nullable=True)
     notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -118,8 +143,8 @@ class Ticket(Base):
     client_id: Mapped[int | None] = mapped_column(ForeignKey("client.id"), nullable=True)
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
-    status: Mapped[str] = mapped_column(String(50), default="open")  # open, in_progress, resolved, closed
-    priority: Mapped[str] = mapped_column(String(50), default="medium")  # low, medium, high, critical
+    status: Mapped[str] = mapped_column(String(50), default="open")
+    priority: Mapped[str] = mapped_column(String(50), default="medium")
     time_spent_minutes: Mapped[int] = mapped_column(Integer, default=0)
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -129,3 +154,38 @@ class Ticket(Base):
     client: Mapped["Client | None"] = relationship(back_populates="tickets")
 
 
+class InterventionPhoto(Base):
+    __tablename__ = "intervention_photo"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    intervention_id: Mapped[int] = mapped_column(ForeignKey("intervention.id"))
+    phase: Mapped[str] = mapped_column(String(20), default="during")
+    file_path: Mapped[str] = mapped_column(String(1024))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    intervention: Mapped["Intervention"] = relationship(back_populates="photos")
+
+
+class InterventionPart(Base):
+    __tablename__ = "intervention_part"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    intervention_id: Mapped[int] = mapped_column(ForeignKey("intervention.id"))
+    part_id: Mapped[int] = mapped_column(ForeignKey("part.id"))
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    intervention: Mapped["Intervention"] = relationship(back_populates="used_parts")
+    part: Mapped["Part"] = relationship()
+
+
+class ActivityLog(Base):
+    __tablename__ = "activity_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("user.id"), nullable=True)
+    username: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    action: Mapped[str] = mapped_column(String(120))
+    detail: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

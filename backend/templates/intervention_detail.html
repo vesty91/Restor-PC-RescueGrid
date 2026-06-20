@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Intervention #{{ intervention.id }} - Restor-PC RescueGrid</title>
+  <style>
+    :root { --brand: #0f766e; --ink: #172033; --muted: #667085; --line: #e5e7eb; --bg: #f5f7fb; }
+    body { margin: 0; font-family: Segoe UI, Arial, sans-serif; background: var(--bg); color: var(--ink); }
+    header { background: linear-gradient(135deg, #0f766e, #134e4a); color: white; padding: 28px clamp(18px, 4vw, 48px); }
+    main { padding: 24px clamp(18px, 4vw, 48px); display: grid; gap: 18px; }
+    section { background: white; border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    label { display: block; margin-top: 10px; font-weight: 650; font-size: 13px; }
+    input, select, button, textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font: inherit; }
+    button { border: 0; background: var(--brand); color: white; font-weight: 800; cursor: pointer; margin-top: 10px; }
+    a { color: var(--brand); font-weight: 700; }
+    .downloads { display: flex; gap: 10px; flex-wrap: wrap; }
+    .downloads a { background: var(--brand); color: white; padding: 10px 14px; border-radius: 12px; text-decoration: none; }
+    .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .photos img { width: 100%; border-radius: 12px; border: 1px solid var(--line); }
+    .ai { white-space: pre-wrap; background: #f8fafc; padding: 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
+    #sigCanvas { border: 1px dashed var(--line); border-radius: 12px; background: #fff; touch-action: none; width: 100%; max-width: 480px; height: 180px; }
+    .pill { display: inline-block; border-radius: 999px; padding: 4px 10px; background: #ecfdf5; color: #047857; font-weight: 800; font-size: 12px; }
+    @media (max-width: 760px) { .grid2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" style="color:#fff;opacity:.85;">← Dashboard</a>
+    <h1>Intervention #{{ intervention.id }}</h1>
+    <p>{{ intervention.title }} · {{ intervention.client.name if intervention.client else 'Client' }} · <span class="pill">{{ intervention.status }}</span></p>
+  </header>
+  <main>
+    <section>
+      <h2>Téléchargements</h2>
+      <div class="downloads">
+        {% if intervention.report_path %}<a href="/intervention/{{ intervention.id }}/download/report">Rapport HTML</a>{% endif %}
+        {% if intervention.archive_path %}<a href="/intervention/{{ intervention.id }}/download/zip">Archive ZIP</a>{% endif %}
+        {% if intervention.report_path %}<a href="/intervention/{{ intervention.id }}/download/manifest">Manifest SHA256</a>{% endif %}
+        <a href="/intervention/{{ intervention.id }}/label" target="_blank">Étiquette</a>
+      </div>
+      <p style="margin-top:12px;color:var(--muted);">Score {{ intervention.health_score or '-' }}/100 · Disque {{ intervention.disk_risk or '-' }} · Risque {{ intervention.data_loss_risk or '-' }}</p>
+    </section>
+
+    {% if intervention.ai_summary %}
+    <section>
+      <h2>Analyse assistée</h2>
+      <div class="ai">{{ intervention.ai_summary }}</div>
+    </section>
+    {% endif %}
+
+    <div class="grid2">
+      <section>
+        <h2>Main d'œuvre</h2>
+        <form action="/intervention/{{ intervention.id }}/labor" method="post">
+          <label>Temps (minutes)</label>
+          <input name="labor_minutes" type="number" value="{{ intervention.labor_minutes or 0 }}">
+          <label>Tarif horaire (€)</label>
+          <input name="labor_rate" type="number" step="0.01" value="{{ intervention.labor_rate or 0 }}">
+          <button>Enregistrer</button>
+        </form>
+        {% if intervention.labor_minutes and intervention.labor_rate %}
+        <p style="margin-top:10px;">Coût MO : {{ "%.2f"|format((intervention.labor_minutes / 60) * intervention.labor_rate) }} €</p>
+        {% endif %}
+      </section>
+      <section>
+        <h2>Pièce utilisée</h2>
+        <form action="/intervention/{{ intervention.id }}/parts" method="post">
+          <label>Pièce en stock</label>
+          <select name="part_id" required>
+            {% for p in parts %}<option value="{{ p.id }}">{{ p.part_type }} — {{ p.brand or '' }} {{ p.model or '' }} (stock: {{ p.quantity }})</option>{% endfor %}
+          </select>
+          <label>Quantité</label>
+          <input name="quantity" type="number" value="1" min="1">
+          <label>Notes</label>
+          <input name="notes" placeholder="Optionnel">
+          <button>Ajouter au dossier</button>
+        </form>
+        {% if intervention.used_parts %}
+        <ul>{% for up in intervention.used_parts %}<li>{{ up.part.part_type }} x{{ up.quantity }}</li>{% endfor %}</ul>
+        {% endif %}
+      </section>
+    </div>
+
+    <section>
+      <h2>Photos</h2>
+      <div class="photos">
+        {% for photo in intervention.photos %}
+        <figure><img src="/storage/{{ photo.file_path }}" alt="{{ photo.phase }}"><figcaption>{{ photo.phase }}</figcaption></figure>
+        {% endfor %}
+      </div>
+      <form action="/intervention/{{ intervention.id }}/photo" method="post" enctype="multipart/form-data" style="margin-top:14px;">
+        <label>Phase</label>
+        <select name="phase"><option value="before">Avant</option><option value="during">Pendant</option><option value="after">Après</option></select>
+        <label>Photo</label>
+        <input type="file" name="file" accept="image/*" required>
+        <button>Ajouter photo</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Signature client</h2>
+      {% if intervention.signature_path %}
+      <img src="/storage/{{ intervention.signature_path }}" alt="Signature" style="max-width:320px;border:1px solid var(--line);border-radius:12px;">
+      {% else %}
+      <canvas id="sigCanvas"></canvas>
+      <form id="sigForm" action="/intervention/{{ intervention.id }}/signature" method="post">
+        <input type="hidden" name="signature_data" id="signature_data">
+        <button type="button" onclick="clearSig()">Effacer</button>
+        <button type="submit" onclick="return saveSig()">Enregistrer signature</button>
+      </form>
+      {% endif %}
+    </section>
+  </main>
+  <script>
+    const canvas = document.getElementById('sigCanvas');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      let drawing = false;
+      const pos = e => { const r = canvas.getBoundingClientRect(); const t = e.touches ? e.touches[0] : e; return { x: t.clientX - r.left, y: t.clientY - r.top }; };
+      const start = e => { drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
+      const move = e => { if (!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
+      const end = () => { drawing = false; };
+      canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); canvas.addEventListener('mouseup', end);
+      canvas.addEventListener('touchstart', start); canvas.addEventListener('touchmove', move); canvas.addEventListener('touchend', end);
+      ctx.lineWidth = 2; ctx.lineCap = 'round';
+      window.clearSig = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); };
+      window.saveSig = () => { document.getElementById('signature_data').value = canvas.toDataURL('image/png'); return true; };
+    }
+  </script>
+</body>
+</html>

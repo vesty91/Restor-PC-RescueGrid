@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>Utilisateurs - Restor-PC RescueGrid</title>
+  <style>
+    body { font-family: Segoe UI, Arial, sans-serif; background: #f5f7fb; margin: 0; padding: 24px 40px; }
+    section { background: white; border: 1px solid #e5e7eb; border-radius: 18px; padding: 18px; margin-bottom: 20px; }
+    h1 { color: #0f766e; }
+    label { display: block; margin-top: 10px; font-weight: 650; }
+    input, select, button { padding: 10px; border-radius: 12px; border: 1px solid #e5e7eb; }
+    button { background: #0f766e; color: white; border: 0; font-weight: 800; cursor: pointer; margin-top: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 10px; border-bottom: 1px solid #e5e7eb; }
+    .err { background: #fee2e2; color: #991b1b; padding: 10px; border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <a href="/">← Dashboard</a>
+  <h1>Utilisateurs</h1>
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+  <section>
+    <h2>Nouveau technicien</h2>
+    <form action="/users" method="post">
+      <label>Identifiant</label><input name="username" required>
+      <label>Mot de passe</label><input name="password" type="password" required minlength="8">
+      <label>Nom complet</label><input name="full_name">
+      <label>Rôle</label>
+      <select name="role"><option value="technicien">Technicien</option><option value="admin">Admin</option></select>
+      <button>Créer</button>
+    </form>
+  </section>
+  <section>
+    <h2>Comptes ({{ users|length }})</h2>
+    <table>
+      <thead><tr><th>Identifiant</th><th>Nom</th><th>Rôle</th><th>Dernière connexion</th><th></th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.username }}</td>
+          <td>{{ u.full_name or '-' }}</td>
+          <td>{{ u.role }}</td>
+          <td>{{ u.last_login.strftime('%d/%m/%Y %H:%M') if u.last_login else '-' }}</td>
+          <td>{% if u.id != user.id %}<form action="/delete/user/{{ u.id }}" method="post" onsubmit="return confirm('Supprimer ?')"><button type="submit">X</button></form>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</body>
+</html>

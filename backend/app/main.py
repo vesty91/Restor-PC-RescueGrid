@@ -13,7 +13,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .database import get_session, init_db, SessionLocal
-from .models import Client, Intervention, Invoice, Machine, Part, Ticket, User
+from .helpers import apply_intervention_filters, generate_ai_summary, invoice_html, try_pdf_response
+from .models import Client, Intervention, Invoice, Machine, Part, Quote, Ticket, User
+from .routes_v10 import init_v10_routes
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -69,7 +71,14 @@ def risk_badge(level: str | None) -> dict:
     return {"label": "Non évalué", "emoji": "⚪", "class": "risk-none"}
 
 
-def build_dashboard_context(request: Request, session: Session, user: User, q: str | None = None) -> dict:
+def build_dashboard_context(
+    request: Request,
+    session: Session,
+    user: User,
+    q: str | None = None,
+    status: str | None = None,
+    sort: str | None = None,
+) -> dict:
     if q:
         query = f"%{q}%"
         clients = session.scalars(select(Client).where(Client.name.ilike(query)).order_by(Client.created_at.desc())).all()
@@ -86,16 +95,19 @@ def build_dashboard_context(request: Request, session: Session, user: User, q: s
             (Part.serial_number.ilike(query)) | (Part.part_type.ilike(query))
         ).order_by(Part.created_at.desc())).all()
         invoices = session.scalars(select(Invoice).where(Invoice.invoice_number.ilike(query)).order_by(Invoice.created_at.desc())).all()
+        quotes = session.scalars(select(Quote).where(Quote.quote_number.ilike(query)).order_by(Quote.created_at.desc())).all()
         tickets = session.scalars(select(Ticket).where(
             (Ticket.title.ilike(query)) | (Ticket.description.ilike(query)) |
             (Ticket.priority.ilike(query)) | (Ticket.status.ilike(query))
         ).order_by(Ticket.created_at.desc())).all()
     else:
         clients = session.scalars(select(Client).order_by(Client.created_at.desc())).all()
-        interventions = session.scalars(select(Intervention).order_by(Intervention.created_at.desc())).all()
+        iq = apply_intervention_filters(select(Intervention), status, sort)
+        interventions = session.scalars(iq).all()
         machines = session.scalars(select(Machine).order_by(Machine.last_intervention.desc().nulls_last())).all()
         parts = session.scalars(select(Part).order_by(Part.created_at.desc())).all()
         invoices = session.scalars(select(Invoice).order_by(Invoice.created_at.desc())).all()
+        quotes = session.scalars(select(Quote).order_by(Quote.created_at.desc())).all()
         tickets = session.scalars(select(Ticket).order_by(Ticket.created_at.desc())).all()
 
     critical_words = ("critical", "critique", "rouge", "noir", "urgent", "danger", "high")
@@ -109,9 +121,9 @@ def build_dashboard_context(request: Request, session: Session, user: User, q: s
 
     alerts = []
     for item in disk_critical[:8]:
-        alerts.append({"level": "critical", "title": item.title, "message": f"Risque disque/données: {item.disk_risk or item.data_loss_risk}", "url": item.report_path})
+        alerts.append({"level": "critical", "title": item.title, "message": f"Risque disque/données: {item.disk_risk or item.data_loss_risk}", "url": f"/intervention/{item.id}"})
     for item in disk_warning[:8]:
-        alerts.append({"level": "warning", "title": item.title, "message": f"À surveiller: {item.disk_risk or item.data_loss_risk}", "url": item.report_path})
+        alerts.append({"level": "warning", "title": item.title, "message": f"À surveiller: {item.disk_risk or item.data_loss_risk}", "url": f"/intervention/{item.id}"})
     for ticket in open_tickets[:6]:
         alerts.append({"level": "ticket", "title": ticket.title, "message": f"Ticket {ticket.priority} · {ticket.status}", "url": "/tickets"})
 
@@ -133,6 +145,7 @@ def build_dashboard_context(request: Request, session: Session, user: User, q: s
         "machines": machines,
         "parts": parts,
         "invoices": invoices,
+        "quotes": quotes,
         "tickets": tickets,
         "user": user,
         "logo_path": get_logo_path(),
@@ -144,37 +157,15 @@ def build_dashboard_context(request: Request, session: Session, user: User, q: s
         "atelier_statuses": ["nouvelle", "en_attente", "en_cours", "termine", "livre", "facture"],
         "risk_badge": risk_badge,
         "search_query": q or "",
+        "filter_status": status or "",
+        "filter_sort": sort or "",
     }
 
 
 
 def intervention_url(intervention: Intervention) -> str:
-    if intervention.report_path:
-        return intervention.report_path
-    return f"/intervention/{intervention.id}/label"
+    return f"/intervention/{intervention.id}"
 
-def invoice_html(invoice: Invoice) -> str:
-    client = invoice.client
-    intervention = invoice.intervention
-    created = invoice.created_at.strftime("%d/%m/%Y")
-    due = invoice.due_date.strftime("%d/%m/%Y") if invoice.due_date else ""
-    return f"""<!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><title>Facture {invoice.invoice_number}</title>
-<style>
-body{{font-family:Segoe UI,Arial,sans-serif;background:#f5f7fb;color:#172033;margin:40px}}
-.page{{max-width:900px;margin:auto;background:white;border-radius:18px;padding:36px;box-shadow:0 20px 50px #0001}}
-h1{{color:#0f766e}} table{{width:100%;border-collapse:collapse;margin-top:24px}} th,td{{border-bottom:1px solid #e5e7eb;padding:10px;text-align:left}}
-.total{{font-size:28px;font-weight:800;color:#0f766e}} @media print{{body{{background:white}}.page{{box-shadow:none}}}}
-</style></head><body><main class="page">
-<h1>Facture {invoice.invoice_number}</h1>
-<p><strong>Client :</strong> {(client.name if client else "Client")}</p>
-<p><strong>Date :</strong> {created} &nbsp; <strong>Échéance :</strong> {due}</p>
-<table><tr><th>Désignation</th><th>Montant HT</th><th>TVA</th><th>Total</th></tr>
-<tr><td>{(intervention.title if intervention else "Intervention Restor-PC RescueGrid")}</td><td>{invoice.amount:.2f} €</td><td>{invoice.tax:.2f} €</td><td>{invoice.total:.2f} €</td></tr></table>
-<p class="total">Total à payer : {invoice.total:.2f} €</p>
-<p>Statut : {invoice.status}</p>
-<p style="color:#667085;margin-top:40px">Document généré par Restor-PC RescueGrid.</p>
-</main></body></html>"""
 
 def intervention_dir(intervention: Intervention) -> Path | None:
     if intervention.report_path:
@@ -193,6 +184,11 @@ def resolve_storage_path(relative_path: str) -> Path:
 
 app = FastAPI(title="Restor-PC RescueGrid")
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+app.include_router(
+    init_v10_routes(
+        templates, STORAGE_DIR, REPORT_DIR, sanitize_filename, intervention_dir, resolve_storage_path
+    )
+)
 
 
 @app.on_event("startup")
@@ -238,12 +234,20 @@ def logout():
 
 
 @app.get("/", response_class=HTMLResponse)
-def dashboard(request: Request, session: Session = Depends(get_session)):
+def dashboard(
+    request: Request,
+    status: str = "",
+    sort: str = "",
+    session: Session = Depends(get_session),
+):
     from .auth import get_current_user
     user = get_current_user(request, session)
     if not user:
         return RedirectResponse("/login", status_code=303)
-    return templates.TemplateResponse("dashboard.html", build_dashboard_context(request, session, user))
+    return templates.TemplateResponse(
+        "dashboard.html",
+        build_dashboard_context(request, session, user, status=status or None, sort=sort or None),
+    )
 
 
 @app.get("/search")
@@ -454,7 +458,10 @@ async def upload_intervention(
     )
     session.add(intervention)
     session.commit()
-    return RedirectResponse("/", status_code=303)
+    session.refresh(intervention)
+    intervention.ai_summary = generate_ai_summary(intervention, extracted_dir)
+    session.commit()
+    return RedirectResponse(f"/intervention/{intervention.id}", status_code=303)
 
 
 @app.post("/delete/client/{client_id}")
@@ -578,7 +585,10 @@ def invoices_list(request: Request, session: Session = Depends(get_session)):
     if not user:
         return RedirectResponse("/login", status_code=303)
     invoices = session.scalars(select(Invoice).order_by(Invoice.created_at.desc())).all()
-    return templates.TemplateResponse("invoices.html", {"request": request, "invoices": invoices, "user": user})
+    interventions = session.scalars(select(Intervention).order_by(Intervention.created_at.desc())).all()
+    return templates.TemplateResponse("invoices.html", {
+        "request": request, "invoices": invoices, "interventions": interventions, "user": user,
+    })
 
 
 @app.post("/invoices")
@@ -766,7 +776,7 @@ def update_intervention_status(
     allowed = {"nouvelle", "en_attente", "en_cours", "termine", "livre", "facture"}
     intervention.status = status if status in allowed else "nouvelle"
     session.commit()
-    return RedirectResponse("/", status_code=303)
+    return RedirectResponse(f"/intervention/{intervention_id}", status_code=303)
 
 
 @app.get("/intervention/{intervention_id}/label", response_class=HTMLResponse)
@@ -808,7 +818,7 @@ def invoice_pdf(invoice_id: int, request: Request, session: Session = Depends(ge
     invoice = session.scalars(select(Invoice).where(Invoice.id == invoice_id)).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Facture introuvable")
-    return HTMLResponse(invoice_html(invoice))
+    return try_pdf_response(invoice_html(invoice), f"{invoice.invoice_number}.pdf")
 
 
 @app.get("/backup/database")

@@ -221,6 +221,47 @@ def test_invalid_login() -> None:
     record("login mot de passe invalide", r.status_code == 200 and "invalides" in r.text.lower())
 
 
+def test_v10_pages() -> None:
+    r = client.get("/quotes")
+    record("GET /quotes", r.status_code == 200 and "Devis" in r.text)
+    r = client.get("/settings")
+    record("GET /settings", r.status_code == 200 and "Paramètres" in r.text)
+    r = client.get("/export/interventions.csv")
+    record("GET /export CSV", r.status_code == 200 and "text/csv" in r.headers.get("content-type", ""))
+
+
+def test_intervention_detail() -> None:
+    from app.database import SessionLocal
+    from app.models import Intervention
+    from sqlalchemy import select
+    with SessionLocal() as session:
+        intervention = session.scalars(select(Intervention).order_by(Intervention.id.desc())).first()
+    if not intervention:
+        record("GET /intervention detail", False, "aucune intervention")
+        return
+    r = client.get(f"/intervention/{intervention.id}")
+    record("GET /intervention detail", r.status_code == 200 and "Téléchargements" in r.text)
+
+
+def test_create_quote() -> None:
+    from app.database import SessionLocal
+    from app.models import Intervention
+    from sqlalchemy import select
+    with SessionLocal() as session:
+        intervention = session.scalars(select(Intervention).order_by(Intervention.id.desc())).first()
+    if not intervention:
+        record("POST /quotes", False, "pas d'intervention")
+        return
+    r = client.post("/quotes", data={
+        "intervention_id": intervention.id,
+        "amount": "50",
+        "tax": "10",
+        "description": "Test devis",
+        "status": "draft",
+    }, follow_redirects=False)
+    record("POST /quotes", r.status_code == 303)
+
+
 def main() -> int:
     print("=== Tests Restor-PC RescueGrid ===\n")
     test_health()
@@ -240,6 +281,9 @@ def main() -> int:
     test_upload_zip_authenticated()
     test_upload_zip_unauthenticated()
     test_downloads_after_upload()
+    test_intervention_detail()
+    test_v10_pages()
+    test_create_quote()
     test_delete_requires_admin()
     test_invalid_login()
 
