@@ -1,0 +1,50 @@
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment / secrets
+.env
+backend/.env
+*.local
+*.secret
+
+# Databases / runtime
+*.db
+*.sqlite
+*.sqlite3
+rescuegrid.db
+backend/rescuegrid.db
+storage/
+backend/storage/
+logs/
+*.log
+
+# Intervention exports / backups
+Intervention_*/
+*_Intervention_*/
+*.zip
+*.7z
+*.rar
+
+# Tools binaries / large artifacts
+tools/*.exe
+tools/*.msi
+tools/*.iso
+*.wim
+*.img
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Generated docs / caches
+htmlcov/
+.coverage

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Intervention #{{ intervention.id }} - Restor-PC RescueGrid</title>
+  <link rel="stylesheet" href="/static/premium.css">
+</head>
+<body>
+  <header>
+    <a href="/">← Dashboard</a>
+    <h1>Intervention #{{ intervention.id }}</h1>
+    <p>{{ intervention.title }} · {{ intervention.client.name if intervention.client else 'Client' }} · <span class="pill">{{ intervention.status }}</span></p>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="card">
+        <h2>Résumé intervention</h2>
+        <div class="grid3">
+          <div class="kpi"><span>Score</span><strong>{{ intervention.health_score or '-' }}/100</strong></div>
+          <div class="kpi"><span>Disque</span><strong>{{ intervention.disk_risk or '-' }}</strong></div>
+          <div class="kpi"><span>Risque données</span><strong>{{ intervention.data_loss_risk or '-' }}</strong></div>
+        </div>
+        <p class="muted" style="margin-bottom:0;">Machine : {{ intervention.machine_name or '-' }} · BIOS : {{ intervention.bios_serial or '-' }}</p>
+      </div>
+      <div class="card">
+        <h2>Téléchargements</h2>
+        <div class="downloads">
+          {% if intervention.report_path %}<a class="btn" href="/intervention/{{ intervention.id }}/download/report">Rapport HTML</a>{% endif %}
+          {% if intervention.archive_path %}<a class="btn secondary" href="/intervention/{{ intervention.id }}/download/zip">Archive ZIP</a>{% endif %}
+          {% if intervention.report_path %}<a class="btn secondary" href="/intervention/{{ intervention.id }}/download/manifest">Manifest SHA256</a>{% endif %}
+          <a class="btn warn" href="/intervention/{{ intervention.id }}/label" target="_blank">Étiquette</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Devis / Facturation</h2>
+      <div class="grid2">
+        <div class="card" style="box-shadow:none;background:#fbfdff;">
+          <h3>Créer un devis depuis cette intervention</h3>
+          <form action="/quotes" method="post">
+            <input type="hidden" name="intervention_id" value="{{ intervention.id }}">
+            <label>Description client</label>
+            <textarea name="description" rows="3">Diagnostic atelier, contrôle SMART, analyse Windows et rapport d'intervention Restor-PC.</textarea>
+            <div class="form-row">
+              <div><label>Montant (€)</label><input name="amount" type="number" step="0.01" value="{{ '%.2f'|format(default_amount or 60) }}"></div>
+              <div><input type="hidden" name="tax" value="0"></div>
+              <div><label>Validité</label><input name="valid_until" type="date" value="{{ default_quote_until }}"></div>
+            </div>
+            <input type="hidden" name="status" value="draft">
+            <button>Créer devis</button>
+          </form>
+        </div>
+
+        <div class="card" style="box-shadow:none;background:#fbfdff;">
+          <h3>Créer une facture directe</h3>
+          <form action="/invoices" method="post">
+            <input type="hidden" name="intervention_id" value="{{ intervention.id }}">
+            <label>Désignation client</label>
+            <input name="notes" value="Diagnostic atelier, contrôle système et intervention Restor-PC.">
+            <div class="form-row">
+              <div><label>Montant (€)</label><input name="amount" type="number" step="0.01" value="{{ '%.2f'|format(default_amount or 60) }}"></div>
+              <div><input type="hidden" name="tax" value="0"></div>
+              <div><label>Échéance</label><input name="due_date" type="date" value="{{ default_invoice_due }}"></div>
+            </div>
+            <input type="hidden" name="status" value="draft">
+            <button>Créer facture</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="grid2" style="margin-top:18px;">
+        <div>
+          <h3>Devis liés</h3>
+          {% if quotes %}
+          <table class="mini-table">
+            <thead><tr><th>N°</th><th>Total</th><th>Statut</th><th>Action</th></tr></thead>
+            <tbody>
+              {% for q in quotes %}
+              <tr>
+                <td><strong>{{ q.quote_number }}</strong></td>
+                <td>{{ "%.2f"|format(q.total) }} €</td>
+                <td><span class="pill info">{% if q.status == 'draft' %}Brouillon{% elif q.status == 'sent' %}Envoyé{% elif q.status == 'accepted' %}Accepté{% elif q.status == 'cancelled' %}Refusé{% else %}{{ q.status }}{% endif %}</span></td>
+                <td class="card-actions">
+                  <a href="/quote/{{ q.id }}/pdf" target="_blank">PDF</a>
+                  <form action="/quote/{{ q.id }}/convert" method="post"><button type="submit">→ Facture</button></form>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}<p class="muted">Aucun devis lié.</p>{% endif %}
+        </div>
+        <div>
+          <h3>Factures liées</h3>
+          {% if invoices %}
+          <table class="mini-table">
+            <thead><tr><th>N°</th><th>Total</th><th>Statut</th><th>Action</th></tr></thead>
+            <tbody>
+              {% for inv in invoices %}
+              <tr>
+                <td><strong>{{ inv.invoice_number }}</strong></td>
+                <td>{{ "%.2f"|format(inv.total) }} €</td>
+                <td><span class="pill {{ 'warn' if inv.status != 'paid' else '' }}">{% if inv.status == 'draft' %}Brouillon{% elif inv.status == 'issued' %}Émise{% elif inv.status == 'paid' %}Payée{% elif inv.status == 'cancelled' %}Annulée{% else %}{{ inv.status }}{% endif %}</span></td>
+                <td class="card-actions">
+                  <a href="/invoice/{{ inv.id }}/pdf" target="_blank">PDF</a>
+                  {% if inv.status != 'paid' %}
+                  <form action="/invoice/{{ inv.id }}/status" method="post"><input type="hidden" name="status" value="paid"><input type="hidden" name="payment_method" value="cash"><button type="submit">Payée</button></form>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          {% else %}<p class="muted">Aucune facture liée.</p>{% endif %}
+        </div>
+      </div>
+      <p style="margin-top:14px;"><a href="/devis">Tous les devis</a> · <a href="/factures">Toutes les factures</a></p>
+    </section>
+
+    {% if intervention.ai_summary %}
+
+    <section class="card">
+      <h2>Chronologie intervention</h2>
+      <div class="timeline">
+        <div><strong>{{ intervention.created_at.strftime('%d/%m/%Y %H:%M') }}</strong> — Intervention importée dans RescueGrid</div>
+        <div><strong>Diagnostic</strong> — Rapport, inventaire, SMART et BlackBox disponibles</div>
+        {% if quotes %}<div><strong>Devis</strong> — {{ quotes|length }} devis lié(s) au dossier</div>{% endif %}
+        {% if invoices %}<div><strong>Facturation</strong> — {{ invoices|length }} facture(s) liée(s) au dossier</div>{% endif %}
+        <div><strong>État</strong> — {{ intervention.status or 'nouvelle' }}</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Diagnostic IA Restor-PC</h2>
+      <div class="ai">{{ intervention.ai_summary }}</div>
+    </section>
+    {% endif %}
+
+
+    <section class="card">
+      <h2>Checklist atelier</h2>
+      <div class="checklist">
+        <div class="check">☑ SMART<small>Contrôle disques et températures</small></div>
+        <div class="check">☑ Sauvegarde<small>À faire avant action destructive</small></div>
+        <div class="check">☑ Windows<small>Journaux et état système</small></div>
+        <div class="check">☑ Rapport<small>Rapport + BlackBox + SHA256</small></div>
+        <div class="check">☐ Malware<small>Analyse antivirus/anti-malware</small></div>
+        <div class="check">☐ CHKDSK<small>Uniquement après sauvegarde</small></div>
+        <div class="check">☐ Pilotes<small>Contrôle drivers importants</small></div>
+        <div class="check">☐ Nettoyage<small>Optimisation et finitions</small></div>
+      </div>
+    </section>
+
+    <div class="grid2">
+      <section class="card">
+        <h2>Main d'œuvre</h2>
+        <form action="/intervention/{{ intervention.id }}/labor" method="post">
+          <label>Temps passé (minutes)</label>
+          <input name="labor_minutes" type="number" value="{{ intervention.labor_minutes or 0 }}">
+          <label>Tarif horaire (€)</label>
+          <input name="labor_rate" type="number" step="0.01" value="{{ intervention.labor_rate or 60 }}">
+          <button>Enregistrer</button>
+        </form>
+        {% if intervention.labor_minutes and intervention.labor_rate %}
+        <p>Coût MO : <strong>{{ "%.2f"|format((intervention.labor_minutes / 60) * intervention.labor_rate) }} €</strong></p>
+        {% endif %}
+      </section>
+
+      <section class="card">
+        <h2>Pièces utilisées</h2>
+        <form action="/intervention/{{ intervention.id }}/parts" method="post">
+          <label>Pièce en stock</label>
+          <select name="part_id" required>
+            {% for p in parts %}<option value="{{ p.id }}">{{ p.part_type }} — {{ p.brand or '' }} {{ p.model or '' }} (stock: {{ p.quantity }})</option>{% endfor %}
+          </select>
+          <label>Quantité</label>
+          <input name="quantity" type="number" value="1" min="1">
+          <label>Notes</label>
+          <input name="notes" placeholder="Optionnel">
+          <button>Ajouter au dossier</button>
+        </form>
+        {% if intervention.used_parts %}
+        <table class="mini-table">
+          <thead><tr><th>Pièce</th><th>Qté</th><th>Notes</th></tr></thead>
+          <tbody>{% for up in intervention.used_parts %}<tr><td>{{ up.part.part_type }} {{ up.part.brand or '' }} {{ up.part.model or '' }}</td><td>{{ up.quantity }}</td><td>{{ up.notes or '' }}</td></tr>{% endfor %}</tbody>
+        </table>
+        {% endif %}
+      </section>
+    </div>
+
+    <div class="grid2">
+      <section class="card">
+        <h2>Photos</h2>
+        <div class="photo-gallery">
+          {% for photo in intervention.photos %}
+          <figure class="photo-thumb">
+            <a href="/storage/{{ photo.file_path }}" target="_blank" title="Ouvrir la photo en grand">
+              <img src="/storage/{{ photo.file_path }}" alt="{{ photo.phase }}">
+            </a>
+            <figcaption>
+              <strong>{% if photo.phase == 'before' %}Avant{% elif photo.phase == 'after' %}Après{% elif photo.phase == 'during' %}Pendant{% else %}{{ photo.phase }}{% endif %}</strong>
+              <span>Cliquer pour agrandir</span>
+            </figcaption>
+          </figure>
+          {% else %}
+          <div class="empty-state">Aucune photo ajoutée pour cette intervention.</div>
+          {% endfor %}
+        </div>
+        <form action="/intervention/{{ intervention.id }}/photo" method="post" enctype="multipart/form-data" style="margin-top:14px;">
+          <label>Phase</label>
+          <select name="phase"><option value="before">Avant</option><option value="during">Pendant</option><option value="after">Après</option></select>
+          <label>Photo</label>
+          <input type="file" name="file" accept="image/*" required>
+          <button>Ajouter photo</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Signature client</h2>
+        {% if intervention.signature_path %}
+        <img src="/storage/{{ intervention.signature_path }}" alt="Signature" class="signature-preview">
+        {% else %}
+        <canvas id="sigCanvas"></canvas>
+        <form id="sigForm" action="/intervention/{{ intervention.id }}/signature" method="post">
+          <input type="hidden" name="signature_data" id="signature_data">
+          <button type="button" onclick="clearSig()">Effacer</button>
+          <button type="submit" onclick="return saveSig()">Enregistrer signature</button>
+        </form>
+        {% endif %}
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const canvas = document.getElementById('sigCanvas');
+    if (canvas) {
+      canvas.width = 520; canvas.height = 180;
+      const ctx = canvas.getContext('2d');
+      let drawing = false;
+      const pos = e => { const r = canvas.getBoundingClientRect(); const t = e.touches ? e.touches[0] : e; return { x: (t.clientX - r.left) * (canvas.width / r.width), y: (t.clientY - r.top) * (canvas.height / r.height) }; };
+      const start = e => { drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); };
+      const move = e => { if (!drawing) return; const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
+      const end = () => { drawing = false; };
+      canvas.addEventListener('mousedown', start); canvas.addEventListener('mousemove', move); canvas.addEventListener('mouseup', end);
+      canvas.addEventListener('mouseleave', end);
+      canvas.addEventListener('touchstart', start); canvas.addEventListener('touchmove', move); canvas.addEventListener('touchend', end);
+      ctx.lineWidth = 2; ctx.lineCap = 'round';
+      window.clearSig = () => { ctx.clearRect(0, 0, canvas.width, canvas.height); };
+      window.saveSig = () => { document.getElementById('signature_data').value = canvas.toDataURL('image/png'); return true; };
+    }
+  </script>
+</body>
+</html>

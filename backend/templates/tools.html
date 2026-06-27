@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Outils RescueGrid USB/PXE</title>
+  <link rel="stylesheet" href="/static/premium.css">
+</head>
+<body>
+  <header class="topbar">
+    <a href="/">← Dashboard</a>
+    <strong>Restor-PC RescueGrid · Outils USB/PXE</strong>
+    <a href="/logout">Déconnexion</a>
+  </header>
+  <main>
+    <section>
+      <h1>Centre outils technicien</h1>
+      <p class="muted">Cette page regroupe les commandes pour créer une clé USB RescueGrid, lancer le menu WinPE, préparer le PXE et déployer sur Synology.</p>
+    </section>
+    <div class="grid">
+      <section class="card">
+        <h2>1. Créer clé USB</h2>
+        <p>Prépare une clé technicien avec scripts RescueGrid, menu WinPE, dossiers de rapports et outils externes.</p>
+        <pre>powershell -ExecutionPolicy Bypass -File agent\windows\Create-RescueGridUSB.ps1 -TargetDrive E: -DashboardUrl "http://192.168.1.10:8000" -IncludeProject</pre>
+      </section>
+      <section class="card">
+        <h2>2. Menu WinPE</h2>
+        <p>Lance le menu atelier depuis la clé ou depuis WinPE.</p>
+        <pre>powershell -ExecutionPolicy Bypass -File agent\windows\Start-RescueGrid.ps1</pre>
+      </section>
+      <section class="card">
+        <h2>3. PXE Rescue Server</h2>
+        <p>Préparation du serveur de boot réseau si le module PXE est disponible.</p>
+        <pre>powershell -ExecutionPolicy Bypass -File pxe\Setup-PXERescueServer.ps1</pre>
+      </section>
+    </div>
+    <section>
+      <h2>Structure clé USB attendue</h2>
+      <pre>RESCUEGRID_USB/
+├── Start-RescueGrid.cmd
+├── RescueGrid/
+│   ├── agent/windows/
+│   ├── tools/smartctl/
+│   ├── tools/testdisk/
+│   ├── reports/
+│   └── config/rescuegrid.env
+└── README_USB.txt</pre>
+    </section>
+  </main>
+  <script>
+    document.documentElement.dataset.theme = localStorage.getItem('rescuegrid-theme') || 'light';
+  </script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tickets - Restor-PC RescueGrid</title>
+  <link rel="stylesheet" href="/static/premium.css">
+</head>
+<body>
+  <header>
+    <a href="/" class="back">← Retour dashboard</a>
+    <h1>Tickets</h1>
+    <p>Suivi des interventions et tickets</p>
+  </header>
+  <main>
+    <div class="stack">
+      <section>
+        <h2>Nouveau ticket</h2>
+        <form action="/tickets" method="post">
+          <label>Intervention</label>
+          <select name="intervention_id" required>
+            {% for i in interventions %}<option value="{{ i.id }}">#{{ i.id }} - {{ i.title }} ({{ i.client.name if i.client else '?' }})</option>{% endfor %}
+          </select>
+          <label>Titre</label>
+          <input name="title" required placeholder="Ex: Problème de démarrage">
+          <label>Description</label>
+          <textarea name="description" placeholder="Détails du problème..."></textarea>
+          <label>Priorité</label>
+          <select name="priority">
+            <option value="low">Basse</option>
+            <option value="medium" selected>Moyenne</option>
+            <option value="high">Haute</option>
+            <option value="critical">Critique</option>
+          </select>
+          <label>Statut</label>
+          <select name="status">
+            <option value="open">Ouvert</option>
+            <option value="in_progress">En cours</option>
+            <option value="resolved">Résolu</option>
+            <option value="closed">Fermé</option>
+          </select>
+          <button>Créer ticket</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>Tickets existants ({{ tickets|length }})</h2>
+        <table>
+          <thead><tr><th>ID</th><th>Titre</th><th>Priorité</th><th>Statut</th><th>Intervention</th><th>Date</th><th></th></tr></thead>
+          <tbody>
+            {% for t in tickets %}
+            <tr>
+              <td>#{{ t.id }}</td>
+              <td><strong>{{ t.title }}</strong></td>
+              <td>{{ t.priority }}</td>
+              <td><span class="pill {{ t.status }}">{{ t.status }}</span></td>
+              <td>{% if t.intervention %}<a href="/intervention/{{ t.intervention_id }}">#{{ t.intervention_id }}</a>{% else %}-{% endif %}</td>
+              <td>{{ t.created_at.strftime('%Y-%m-%d') }}</td>
+              <td><form action="/delete/ticket/{{ t.id }}" method="post" style="display:inline"><button class="btn-sm">X</button></form></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

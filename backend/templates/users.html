@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Utilisateurs - Restor-PC RescueGrid</title>
+  <link rel="stylesheet" href="/static/premium.css">
+</head>
+<body>
+  <a href="/">← Dashboard</a>
+  <h1>Utilisateurs</h1>
+  {% if error %}<div class="err">{{ error }}</div>{% endif %}
+  <section>
+    <h2>Nouveau technicien</h2>
+    <form action="/users" method="post">
+      <label>Identifiant</label><input name="username" required>
+      <label>Mot de passe</label><input name="password" type="password" required minlength="8">
+      <label>Nom complet</label><input name="full_name">
+      <label>Rôle</label>
+      <select name="role"><option value="technicien">Technicien</option><option value="admin">Admin</option></select>
+      <button>Créer</button>
+    </form>
+  </section>
+  <section>
+    <h2>Comptes ({{ users|length }})</h2>
+    <table>
+      <thead><tr><th>Identifiant</th><th>Nom</th><th>Rôle</th><th>Dernière connexion</th><th></th></tr></thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u.username }}</td>
+          <td>{{ u.full_name or '-' }}</td>
+          <td>{{ u.role }}</td>
+          <td>{{ u.last_login.strftime('%d/%m/%Y %H:%M') if u.last_login else '-' }}</td>
+          <td>{% if u.id != user.id %}<form action="/delete/user/{{ u.id }}" method="post" onsubmit="return confirm('Supprimer ?')"><button type="submit">X</button></form>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</body>
+</html>

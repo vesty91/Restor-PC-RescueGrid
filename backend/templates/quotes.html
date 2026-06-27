@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Devis - Restor-PC RescueGrid</title>
+  <link rel="stylesheet" href="/static/premium.css">
+</head>
+<body>
+  <header>
+    <a href="/">← Dashboard</a>
+    <h1>Devis</h1>
+    <p>Création, impression PDF et conversion en facture — TVA non applicable, article 293 B du CGI.</p>
+  </header>
+  <main>
+{% if request.query_params.get('mail') %}
+    <section class="notice">
+      {% if request.query_params.get('mail') == 'sent' %}Email envoyé.
+      {% elif request.query_params.get('mail') == 'missing_client_email' %}Email client manquant : complète la fiche client avant l’envoi.
+      {% elif request.query_params.get('mail') == 'error' %}Erreur SMTP : vérifie la configuration email dans .env.
+      {% endif %}
+    </section>
+    {% endif %}
+    <section>
+      <h2>Nouveau devis</h2>
+      <form action="/quotes" method="post">
+        <label>Intervention</label>
+        <select name="intervention_id" required>
+          {% for i in interventions %}
+          <option value="{{ i.id }}">#{{ i.id }} — {{ i.client.name if i.client else '?' }} — {{ i.machine_name or i.title }}</option>
+          {% endfor %}
+        </select>
+        <label>Description client</label>
+        <textarea name="description" rows="3">Diagnostic atelier, contrôle SMART, analyse Windows et rapport d'intervention Restor-PC.</textarea>
+        <div class="grid2">
+          <div><label>Montant (€)</label><input name="amount" type="number" step="0.01" value="{% if interventions %}{{ '%.2f'|format(default_billing_amount(interventions[0])) }}{% else %}60.00{% endif %}" required></div>
+          <div><input type="hidden" name="tax" value="0"></div>
+        </div>
+        <div class="grid2">
+          <div><label>Validité jusqu'au</label><input name="valid_until" type="date" value="{{ default_due_date(30) if default_due_date else '' }}"></div>
+          <div><label>Statut</label><select name="status"><option value="draft">Brouillon</option><option value="sent">Envoyé</option><option value="accepted">Accepté</option><option value="cancelled">Refusé</option></select></div>
+        </div>
+        <p class="hint">TVA non applicable, article 293 B du CGI. Le PDF utilise une désignation client propre.</p>
+        <button>Créer le devis</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Devis existants ({{ quotes|length }})</h2>
+      <table>
+        <thead><tr><th>N°</th><th>Date</th><th>Client</th><th>Total</th><th>Statut</th><th>Actions</th></tr></thead>
+        <tbody>
+          {% for q in quotes %}
+          <tr>
+            <td><strong>{{ q.quote_number }}</strong></td>
+            <td>{{ q.created_at.strftime('%d/%m/%Y') }}</td>
+            <td>{% if q.client %}<a href="/client/{{ q.client.id }}">{{ q.client.name }}</a>{% else %}?{% endif %}</td>
+            <td><strong>{{ "%.2f"|format(q.total) }} €</strong></td>
+            <td><span class="pill {{ q.status }}">{% if q.status == 'draft' %}Brouillon{% elif q.status == 'sent' %}Envoyé{% elif q.status == 'accepted' %}Accepté{% elif q.status == 'cancelled' %}Refusé{% else %}{{ q.status }}{% endif %}</span></td>
+            <td class="actions-inline">
+              <a href="/quote/{{ q.id }}/pdf" target="_blank">PDF</a>
+              <form action="/quote/{{ q.id }}/send-email" method="post"><button type="submit">Envoyer email</button></form>
+              <form action="/quote/{{ q.id }}/status" method="post"><input type="hidden" name="status" value="sent"><button type="submit">Marquer envoyée</button></form>
+              <form action="/quote/{{ q.id }}/status" method="post"><input type="hidden" name="status" value="accepted"><button type="submit">Accepter</button></form>
+              <form action="/quote/{{ q.id }}/convert" method="post"><button type="submit">Convertir facture</button></form>
+              <form action="/quote/{{ q.id }}/status" method="post"><input type="hidden" name="status" value="cancelled"><button type="submit" class="btn-sm">Refuser</button></form>
+              <form action="/delete/quote/{{ q.id }}" method="post" onsubmit="return confirm('Supprimer ?')"><button class="btn-sm" type="submit">X</button></form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="6" class="hint">Aucun devis pour le moment.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

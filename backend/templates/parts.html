@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Inventaire atelier - Restor-PC RescueGrid</title>
+  <link rel="stylesheet" href="/static/premium.css">
+</head>
+<body>
+  <header>
+    <h1>Inventaire atelier</h1>
+    <p>Pièces détachées : SSD, HDD, RAM, CPU, GPU</p>
+    <p><a href="/" style="color:#fff; opacity:.8;">&larr; Retour au dashboard</a></p>
+  </header>
+  <main>
+    <section>
+      <h2>Ajouter une pièce</h2>
+      <form method="post">
+        <label>Type</label>
+        <select name="part_type" required>
+          <option value="ssd">SSD</option>
+          <option value="hdd">HDD</option>
+          <option value="ram">RAM</option>
+          <option value="cpu">CPU</option>
+          <option value="gpu">GPU</option>
+        </select>
+        <label>Marque</label>
+        <input name="brand">
+        <label>Modèle</label>
+        <input name="model">
+        <label>Numéro de série</label>
+        <input name="serial_number">
+        <label>Capacité (Go)</label>
+        <input name="capacity_gb" type="number" min="0">
+        <label>Quantité</label>
+        <input name="quantity" type="number" min="1" value="1">
+        <label>Notes</label>
+        <input name="notes">
+        <button>Ajouter</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Stock ({{ parts|length }})</h2>
+      <table>
+        <thead><tr><th>Type</th><th>Marque</th><th>Modèle</th><th>Serial</th><th>Capacité</th><th>Qté</th><th>Date achat</th><th></th></tr></thead>
+        <tbody>
+          {% for part in parts %}
+          <tr>
+            <td><span class="pill">{{ part.part_type.upper() }}</span></td>
+            <td>{{ part.brand or '-' }}</td>
+            <td>{{ part.model or '-' }}</td>
+            <td>{{ part.serial_number or '-' }}</td>
+            <td>{{ part.capacity_gb if part.capacity_gb is not none else '-' }}</td>
+            <td>{{ part.quantity }}</td>
+            <td>{{ part.purchase_date.strftime('%Y-%m-%d') if part.purchase_date else '-' }}</td>
+            <td><form action="/delete/part/{{ part.id }}" method="post" style="display:inline"><button class="btn-sm">X</button></form></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>

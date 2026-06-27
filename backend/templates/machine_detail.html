@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Machine {{ machine.machine_name or '#'+machine.id|string }} - Restor-PC RescueGrid</title>
+  <link rel="stylesheet" href="/static/premium.css">
+</head>
+<body>
+  <header>
+    <a href="/">&larr; Dashboard</a>
+    <h1>{{ machine.machine_name or 'Machine #' ~ machine.id }}</h1>
+    <p>Fabricant : {{ machine.manufacturer or '-' }} · Modèle : {{ machine.model or '-' }} · BIOS : {{ machine.bios_serial or '-' }}</p>
+    <p>Première intervention : {{ machine.created_at.strftime('%d/%m/%Y') }} · Dernière : {{ machine.last_intervention.strftime('%d/%m/%Y %H:%M') if machine.last_intervention else '-' }}</p>
+  </header>
+  <main>
+    <div class="grid">
+      <div class="card kpi"><span>Interventions</span><strong>{{ interventions|length }}</strong></div>
+      <div class="card kpi"><span>Meilleur score</span><strong>{{ best_score if best_score is defined else (interventions[0].health_score if interventions else '-') }}</strong></div>
+      <div class="card kpi"><span>Dernier score</span><strong>{{ interventions[0].health_score if interventions and interventions[0].health_score is not none else '-' }}</strong></div>
+      <div class="card kpi"><span>Statut disque</span><strong>{{ interventions[0].disk_risk if interventions else '-' }}</strong></div>
+    </div>
+
+    <div class="grid">
+      <div class="card kpi"><span>CPU</span><strong style="font-size:18px;">{{ hardware.cpu or '-' }}</strong></div>
+      <div class="card kpi"><span>RAM</span><strong>{{ hardware.ram or '-' }}</strong></div>
+      <div class="card kpi"><span>GPU</span><strong style="font-size:18px;">{{ hardware.gpu or '-' }}</strong></div>
+      <div class="card kpi"><span>Stockage total</span><strong>{{ hardware.storage or '-' }}</strong></div>
+    </div>
+
+    <section>
+      <h2>Identité machine</h2>
+      <table>
+        <tr><th>Nom</th><td>{{ machine.machine_name or '-' }}</td></tr>
+        <tr><th>Fabricant</th><td>{{ machine.manufacturer or '-' }}</td></tr>
+        <tr><th>Modèle</th><td>{{ machine.model or '-' }}</td></tr>
+        <tr><th>Serial BIOS</th><td>{{ machine.bios_serial or '-' }}</td></tr>
+        <tr><th>Windows</th><td>{{ hardware.windows or '-' }}</td></tr>
+        <tr><th>CPU</th><td>{{ hardware.cpu or '-' }}</td></tr>
+        <tr><th>RAM</th><td>{{ hardware.ram or '-' }}</td></tr>
+        <tr><th>GPU</th><td>{{ hardware.gpu or '-' }}</td></tr>
+        <tr><th>Stockage total</th><td>{{ hardware.storage or '-' }}</td></tr>
+      </table>
+    </section>
+
+    <div class="grid2">
+      <section>
+        <h2>Chronologie atelier</h2>
+        {% if interventions %}
+        <div class="timeline">
+          {% for item in interventions %}
+          <div class="event">
+            <strong>{{ item.created_at.strftime('%d/%m/%Y %H:%M') }}</strong><br>
+            {{ item.title }}<br>
+            <span class="muted">Score {{ item.health_score if item.health_score is not none else '-' }}/100 · Disque {{ item.disk_risk or '-' }} · Statut {{ item.status }}</span><br>
+            <a href="/intervention/{{ item.id }}">Ouvrir le dossier</a>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          <p class="muted">Aucune intervention liée.</p>
+        {% endif %}
+      </section>
+
+      <section>
+        <h2>Historique interventions</h2>
+        {% if interventions %}
+        <table>
+          <thead><tr><th>Date</th><th>Client</th><th>Score</th><th>Rapport</th></tr></thead>
+          <tbody>
+            {% for item in interventions %}
+            <tr>
+              <td>{{ item.created_at.strftime('%d/%m/%Y') }}</td>
+              <td>{% if item.client %}<a href="/client/{{ item.client_id }}">{{ item.client.name }}</a>{% else %}-{% endif %}</td>
+              <td>{{ item.health_score if item.health_score is not none else '-' }}</td>
+              <td>
+                <a href="/intervention/{{ item.id }}">Dossier</a>
+                {% if item.report_path %} · <a href="/intervention/{{ item.id }}/download/report" target="_blank">Rapport</a>{% endif %}
+                {% if item.archive_path %} · <a href="/intervention/{{ item.id }}/download/zip">ZIP</a>{% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <p class="muted">Aucun historique.</p>
+        {% endif %}
+      </section>
+    </div>
+  </main>
+</body>
+</html>

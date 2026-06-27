@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Client {{ client.name }} - Restor-PC RescueGrid</title>
+  <link rel="stylesheet" href="/static/premium.css">
+</head>
+<body class="premium-body">
+  <aside class="side">
+    <div class="side-logo"><img src="/static/restorpc_logo_header.png" alt="Restor-PC"></div>
+    <nav>
+      <a href="/">Tableau de bord</a>
+      <a href="/quotes">Devis</a>
+      <a href="/invoices">Factures</a>
+      <a href="/tickets">Tickets</a>
+    </nav>
+  </aside>
+  <main class="shell">
+    <div class="topbar"><a href="/">&larr; Tableau de bord</a></div>
+    {% if request.query_params.get('mail') == 'missing_client_email' %}
+    <section class="premium-card notice">
+      Email client manquant : renseigne l'adresse email puis enregistre la fiche client avant l'envoi.
+    </section>
+    {% endif %}
+
+    <section class="premium-card hero-card">
+      <h1>{{ client.name }}</h1>
+      <p>Email : {{ client.email or '-' }} · Tél : {{ client.phone or '-' }} · Depuis : {{ client.created_at.strftime('%d/%m/%Y') }}</p>
+    </section>
+
+    <section class="premium-card">
+      <h2>Fiche client</h2>
+      <form method="post" action="/client/{{ client.id }}/update" class="grid-form">
+        <label>Nom
+          <input name="name" value="{{ client.name }}" required>
+        </label>
+        <label>Contact
+          <input name="contact_name" value="{{ client.contact_name or '' }}" placeholder="Nom du contact">
+        </label>
+        <label>Email
+          <input type="email" name="email" value="{{ client.email or '' }}" placeholder="client@email.fr">
+        </label>
+        <label>Téléphone
+          <input name="phone" value="{{ client.phone or '' }}" placeholder="06...">
+        </label>
+        <label class="full">Adresse
+          <textarea name="address" rows="3" placeholder="Adresse complète du client">{{ client.address or '' }}</textarea>
+        </label>
+        <button type="submit">Enregistrer la fiche client</button>
+      </form>
+      <p class="muted">Ces informations sont reprises automatiquement dans les devis, factures et l’envoi email.</p>
+    </section>
+
+    <section class="premium-card">
+      <h2>Interventions ({{ interventions|length }})</h2>
+      <table>
+        <thead><tr><th>Date</th><th>Titre</th><th>Machine</th><th>Score</th><th>Disque</th><th>Statut</th><th>Rapport</th></tr></thead>
+        <tbody>
+          {% for item in interventions %}
+          <tr>
+            <td>{{ item.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td><a href="/intervention/{{ item.id }}">{{ item.title }}</a></td>
+            <td>{{ item.machine_name or '-' }}</td>
+            <td>{{ item.health_score if item.health_score is not none else '-' }}</td>
+            <td>{{ item.disk_risk or '-' }}</td>
+            <td><span class="pill">{{ item.status }}</span></td>
+            <td>
+              {% if item.report_path %}<a href="/intervention/{{ item.id }}/download/report" target="_blank">Rapport</a>{% else %}<span class="muted">-</span>{% endif %}
+              {% if item.archive_path %} · <a href="/intervention/{{ item.id }}/download/zip">ZIP</a>{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </main>
+</body>
+</html>
